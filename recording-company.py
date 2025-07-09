@@ -126,8 +126,8 @@ def auto_record(max_minutes, room_id):
             page.close()
 
 if __name__ == "__main__":
-    room_id = 11132351  # 替换为你想录制的房间号
-    max_minutes = 300   # 最大录制时间（分钟）
+    room_id = 1616  # 替换为你想录制的房间号
+    max_minutes = 500 #录制时间（分钟）
 
     wait_until_live(room_id)
     success = auto_record(max_minutes, room_id)
@@ -135,6 +135,3 @@ if __name__ == "__main__":
     if success:
         logger.info("🎉 录制流程已完成")
 
-
-if __name__ == "__main__":
-    pass
