@@ -10,7 +10,7 @@ INTERVAL = 2 * 3610   # 2小时 + 10秒冗余
 pyautogui.FAILSAFE = True
 
 print("程序启动，5秒后开始执行...")
-time.sleep(5)
+time.sleep(2)
 
 # ===== 1-5 只执行一次 =====
 
@@ -53,11 +53,11 @@ while True:
     print(f"点击完成，时间：{now}")
 
     # 10 最小化
-    pyautogui.click(1844, 1419)
+    pyautogui.click(1784, 1422)
 
     print("等待2小时...")
 
     time.sleep(INTERVAL)
 
     # 恢复窗口
-    pyautogui.click(1844, 1419)
+    pyautogui.click(1784, 1422)
