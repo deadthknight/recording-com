@@ -57,10 +57,10 @@ while True:
     print(f"点击完成，时间：{now}")
 
     # 10 最小化
-    rand_click(1784, 1422)
+    rand_click(1746, 1419)
 
     print("等待约2小时~2小时5分钟...")
     rand_sleep_2h_range()           # 主循环等待
 
     # 恢复窗口
-    rand_click(1784, 1422)
+    rand_click(1746, 1419)
