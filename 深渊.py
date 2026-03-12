@@ -18,16 +18,21 @@ time.sleep(5)
 pyautogui.doubleClick(180, 1144)
 
 # 2 等待30秒
-time.sleep(30)
+time.sleep(20)
 
 # 3
 pyautogui.click(1497, 1019)
 
+time.sleep(2)
+
 # 4
 pyautogui.click(1350, 451)
 
+time.sleep(2)
 # 5
 pyautogui.click(1125, 1063)
+
+time.sleep(2)
 
 print("初始化操作完成")
 
