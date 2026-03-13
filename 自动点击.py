@@ -1,26 +1,19 @@
 import pyautogui
 import time
+from datetime import datetime
 
-DELAY = 4 * 3600 + 12 * 60
+print("程序将在5秒后开始执行...")
+time.sleep(5)
 
-pyautogui.FAILSAFE = True
+for i in range(5):
+    start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    pyautogui.click(1165, 814)
+    time.sleep(33)
+    pyautogui.click(1598, 203)
+    print(f"[{start_time}] 执行第{i + 1}次完毕")
 
-click_points = [
-    (2264, 844),
-    (2311, 949),
-    (2364,1128),
-    (2364,1128),
-    (2364,1128),
-]
+    if i < 4:  # 最后一次不需要再等待
+        print("等待10分钟后继续下一次...")
+        time.sleep(610)  # 10分钟 = 600秒
 
-print("程序启动，开始等待...")
-time.sleep(DELAY)
-
-print("开始执行点击...")
-
-for x, y in click_points:
-    pyautogui.click(x, y)
-    print(f"已点击 ({x}, {y})")
-    time.sleep(1)
-
-print("执行完成，程序结束")
+print("程序全部执行完毕")
