@@ -55,6 +55,7 @@ def daily_task():
         click(1511, 258)
 
         print(f"[{start_time}] 执行第{i + 1}次完毕")
+
         if i < 4:
             print("等待10分钟后继续下一次...")
             time.sleep(610)
@@ -63,19 +64,19 @@ def daily_task():
 
     rand_sleep()
 
-    click(1263, 1165)  #点击战斗
+    click(1263, 1165)  # 点击战斗
     print("点击战斗")
     rand_sleep()
 
-    click(1508, 1020)  #活动
+    click(1508, 1020)  # 活动
     print("点击活动")
     rand_sleep()
 
-    click(1280, 448)   #深渊
+    click(1280, 448)   # 深渊
     print("点击深渊")
     rand_sleep()
 
-    click(1103, 1065)  #仓库
+    click(1103, 1065)  # 仓库
     print("点击仓库")
     rand_sleep()
 
@@ -115,6 +116,10 @@ while True:
     ):
         daily_task()
         last_daily_run_date = now.date()
+
+        # 每日任务结束后再次打印主任务时间
+        print("每日任务结束")
+        print("下次主任务时间：", next_main_time.strftime("%Y-%m-%d %H:%M:%S"))
 
     # ---------------- 等待下一次 ----------------
     print("等待约 2小时 ~ 2小时5分钟")
