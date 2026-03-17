@@ -61,7 +61,7 @@ def rand_sleep(a=2, b=3):
 
 # ---------------- 每日任务 ----------------
 def daily_task():
-    print(f"[{datetime.now()}] 开始执行每日任务")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始执行每日任务")
 
     click(1500, 280)
     rand_sleep()
@@ -99,11 +99,11 @@ def daily_task():
     print("点击仓库")
     rand_sleep()
 
-    print(f"[{datetime.now()}] 每日任务执行完毕")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 每日任务执行完毕")
     print("=" * 50)
 
 # ---------------- 主循环 ----------------
-print(f"[{datetime.now()}] 脚本启动，3秒后开始...")
+print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 脚本启动，3秒后开始...")
 time.sleep(3)
 
 while True:
@@ -113,7 +113,7 @@ while True:
     main_click_with_check(CLICK_X, CLICK_Y)
     main_run_count += 1
     now = datetime.now()
-    print(f"[{now}] 点击完成时间 | 已领取次数：{main_run_count}")
+    print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] 点击完成时间 | 已领取次数：{main_run_count}")
 
     # ===== 计算下一次主任务时间 =====
     interval = random.uniform(7200, 7500)  # 2小时 ~ 2小时5分钟
@@ -127,5 +127,5 @@ while True:
 
     # ===== 等待到下一次主任务 =====
     sleep_seconds = (next_main_time - datetime.now()).total_seconds()
-    print(f"[{datetime.now()}] 等待 {int(sleep_seconds)} 秒后执行下一轮主任务 | 下次主任务时间：{next_main_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 等待 {int(sleep_seconds)} 秒后执行下一轮主任务 | 下次主任务时间：{next_main_time.strftime('%Y-%m-%d %H:%M:%S')}")
     time.sleep(sleep_seconds)
