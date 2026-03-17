@@ -43,42 +43,63 @@ def main_click_with_check(x, y, delta=2, check_point=None):
         rx = x + random.randint(-delta, delta)
         ry = y + random.randint(-delta, delta)
         pyautogui.click(rx, ry)
-        print("像素变化，再点击1次")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 像素变化，再点击1次")
     else:
         # 像素没变化，再点击2次
-        print("像素未变化，再点击2次")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 像素未变化，再点击2次")
         for _ in range(2):
             rx = x + random.randint(-delta, delta)
             ry = y + random.randint(-delta, delta)
             pyautogui.click(rx, ry)
             time.sleep(2)
 
-    print("主任务点击成功")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 主任务点击成功")
 
 # ---------------- 随机等待 ----------------
 def rand_sleep(a=2, b=3):
     time.sleep(random.uniform(a, b))
 
+# ---------------- 判断是否需要执行每日任务 ----------------
+def should_run_daily(next_main_time):
+    if last_daily_run_date == datetime.now().date():
+        return False
+    if datetime.now().hour < 6:
+        return False
+    if (next_main_time - datetime.now()).total_seconds() < 3600:
+        return False
+
+    # 宝石碎片像素判断 (1096,895)
+    before = pyautogui.pixel(1096, 895)
+    # 模拟点击检测是否出现变化
+    pyautogui.click(1096, 895)
+    time.sleep(2)  # 等广告弹出
+    after = pyautogui.pixel(1096, 895)
+    if before == after:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 宝石碎片已领取，跳过每日任务")
+        return False
+
+    return True
+
 # ---------------- 每日任务 ----------------
 def daily_task():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始执行每日任务")
 
-    click(1500, 280)
+    click(1500, 280)  # 关闭深渊
     rand_sleep()
-    click(1055, 1162)
+    click(1055, 1162)  # 深渊返回
     rand_sleep()
-    click(1055, 1162)
+    click(1055, 1162)  # 返回主页面
     rand_sleep()
-    click(1071, 1170)
+    click(1071, 1170)  # 商店
     rand_sleep()
-    click(1215, 1089)
+    click(1215, 1089)  # 资源商店
     rand_sleep()
 
     for i in range(5):
         start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        click(1096, 895)
+        click(1096, 895)  # 宝石碎片
         time.sleep(33)
-        click(1511, 258)
+        click(1511, 258)  # 关闭广告
         print(f"[{start_time}] 执行第{i + 1}次完毕")
         if i < 4:
             print("等待10分钟后继续下一次...")
@@ -120,10 +141,9 @@ while True:
     next_main_time = start_main_time + timedelta(seconds=interval)
 
     # ===== 每日任务判断 =====
-    if last_daily_run_date != now.date() and now.hour >= 6 and (next_main_time - now).total_seconds() >= 3600:
+    if should_run_daily(next_main_time):
         daily_task()
-        last_daily_run_date = now.date()
-        # 每日任务结束后，不改变 next_main_time
+        last_daily_run_date = datetime.now().date()
 
     # ===== 等待到下一次主任务 =====
     sleep_seconds = (next_main_time - datetime.now()).total_seconds()
