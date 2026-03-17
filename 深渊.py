@@ -61,7 +61,7 @@ def rand_sleep(a=2, b=3):
 
 # ---------------- 每日任务 ----------------
 def daily_task():
-    print("开始执行每日任务")
+    print(f"[{datetime.now()}] 开始执行每日任务")
 
     click(1500, 280)
     rand_sleep()
@@ -99,39 +99,33 @@ def daily_task():
     print("点击仓库")
     rand_sleep()
 
-    print("每日任务执行完毕")
+    print(f"[{datetime.now()}] 每日任务执行完毕")
     print("=" * 50)
 
 # ---------------- 主循环 ----------------
-print("脚本启动，3秒后开始...")
+print(f"[{datetime.now()}] 脚本启动，3秒后开始...")
 time.sleep(3)
 
 while True:
+    start_main_time = datetime.now()
+
     # ===== 主任务 =====
     main_click_with_check(CLICK_X, CLICK_Y)
     main_run_count += 1
-
     now = datetime.now()
-    print(f"点击完成时间：{now.strftime('%Y-%m-%d %H:%M:%S')} | 已领取次数：{main_run_count}")
+    print(f"[{now}] 点击完成时间 | 已领取次数：{main_run_count}")
 
-    # ===== 计算下一次主任务 =====
+    # ===== 计算下一次主任务时间 =====
     interval = random.uniform(7200, 7500)  # 2小时 ~ 2小时5分钟
-    next_main_time = now + timedelta(seconds=interval)
+    next_main_time = start_main_time + timedelta(seconds=interval)
 
     # ===== 每日任务判断 =====
-    if (
-        last_daily_run_date != now.date()
-        and now.hour >= 6
-        and (next_main_time - now).total_seconds() >= 3600
-    ):
+    if last_daily_run_date != now.date() and now.hour >= 6 and (next_main_time - now).total_seconds() >= 3600:
         daily_task()
         last_daily_run_date = now.date()
-        print("每日任务结束")
+        # 每日任务结束后，不改变 next_main_time
 
-    # ===== 统一打印等待信息和下次主任务时间 =====
-    print("等待约 2小时 ~ 2小时5分钟")
-    print("下次主任务时间：", next_main_time.strftime("%Y-%m-%d %H:%M:%S"))
-    print("-" * 40)
-
-    # ===== 等待下一次主任务 =====
-    time.sleep(interval)
+    # ===== 等待到下一次主任务 =====
+    sleep_seconds = (next_main_time - datetime.now()).total_seconds()
+    print(f"[{datetime.now()}] 等待 {int(sleep_seconds)} 秒后执行下一轮主任务 | 下次主任务时间：{next_main_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    time.sleep(sleep_seconds)
