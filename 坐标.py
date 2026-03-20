@@ -7,5 +7,9 @@ while True:
     print(pyautogui.position())
     time.sleep(1)
 
+# import pyautogui
+#
+# print(pyautogui.pixel(1462, 870))
+
 if __name__ == "__main__":
     pass
