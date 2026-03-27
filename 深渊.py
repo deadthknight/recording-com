@@ -76,7 +76,7 @@ def click(x, y, desc="", delta=2):
     ry = y + random.randint(-delta, delta)
     pyautogui.click(rx, ry)
     if desc:
-        print(f"[{now_str()}] 点击：{desc}")
+        log("操作", f"点击：{desc}")
 
 def rand_sleep(a=2, b=3):
     time.sleep(random.uniform(a, b))
@@ -135,6 +135,9 @@ def scroll_up(times, desc=""):
         time.sleep(0.3)
     rand_sleep()
 
+def log(tag, msg):
+    print(f"[{tag}][{now_str()}] {msg}")
+
 # ---------------- 输入函数 ----------------
 def input_int(prompt, valid_choices=None):
     while True:
@@ -173,22 +176,21 @@ def main_task_once():
 
     if before != after:
         click(CLICK_X, CLICK_Y, "确认")
-        print(f"[{now_str()}] 领取材料")
+        log("主任务", "领取材料")
     else:
-        print(f"[{now_str()}] 像素未变化，不再点击")
+        log("主任务", "像素未变化，不再点击")
 
     main_run_count += 1
-    print(f"[{now_str()}] 深渊材料已领取完成 | 已领取次数：{main_run_count}")
+    log("主任务", f"深渊材料已领取完成 | 已领取次数：{main_run_count}")
 
 # ---------------- 初始化领地 ----------------
 def init_territory():
     global territory_initialized
 
-    # ✅ 已执行过，直接跳过（关键）
     if territory_initialized:
         return
 
-    print(f"[{now_str()}] 开始执行初始化领地")
+    log("系统", "开始执行初始化领地")
 
     click(1500, 280, "关闭深渊")
     rand_sleep()
@@ -201,18 +203,17 @@ def init_territory():
 
     for i in range(3):
         pyautogui.scroll(-300)
-        print(f"[{now_str()}] 领地下滑第{i+1}次")
+        log("系统", f"领地下滑第{i+1}次")
         time.sleep(0.3)
 
     rand_sleep()
-    click(1549, 790, "点击初始位置")
+    click(1549, 790, "进入生产工厂")
     rand_sleep()
 
     back_to_main_flow()
 
-    print(f"[{now_str()}] 初始化领地执行完毕")
+    log("系统", "初始化领地执行完毕")
 
-    # ✅ 标记为已执行（关键）
     territory_initialized = True
 
 # ---------------- 每日任务 ----------------
@@ -223,12 +224,11 @@ def daily_task_once(next_main_time=None):
 
     today = datetime.now().date()
     if last_daily_run_date == today:
-        print(f"[{now_str()}] 今日每日任务已执行过，跳过")
+        log("每日", "今日每日任务已执行过，跳过")
         return
 
-    start_time = now_str()
-    print(f"[{start_time}] 开始每日任务")
-    print(f"[{now_full_str()}] 开始每日任务前置动作")
+    log("每日", "开始每日任务")
+    log("每日", "开始每日任务前置动作")
 
     click(1500, 280, "关闭深渊")
     rand_sleep()
@@ -240,6 +240,7 @@ def daily_task_once(next_main_time=None):
     rand_sleep()
     click(1215, 1089, "资源商店")
     rand_sleep()
+
     for i in range(5):
         before = pyautogui.pixel(GEM_X, GEM_Y)
 
@@ -248,25 +249,23 @@ def daily_task_once(next_main_time=None):
 
         after = pyautogui.pixel(GEM_X, GEM_Y)
 
-        # ✅ 每一轮都判断
         if before == after:
-            print(f"[{now_str()}] 宝石碎片已无法继续领取，结束循环（第{i + 1}次）")
+            log("每日", f"宝石碎片已无法继续领取，结束循环（第{i + 1}次）")
             break
 
-        # ✅ 正常领取流程
-        time.sleep(31)  # 补齐到33秒
+        time.sleep(31)
 
         click(AD_CLOSE_X, AD_CLOSE_Y, "关闭广告")
 
-        print(f"[{now_str()}] 执行第{i + 1}次宝石碎片领取")
+        log("每日", f"执行第{i + 1}次宝石碎片领取")
 
         if i < 4:
-            print(f"[{now_str()}] 等待10分钟后继续下一次...")
+            log("每日", "等待10分钟后继续下一次...")
             time.sleep(610)
 
     last_daily_run_date = datetime.now().date()
 
-    print("宝石碎片程序全部执行完毕（或跳过循环）")
+    log("每日", "宝石碎片流程执行完毕")
     rand_sleep()
     click(1263, 1165, "点击战斗")
     rand_sleep()
@@ -277,11 +276,11 @@ def daily_task_once(next_main_time=None):
     click(1103, 1065, "点击仓库")
     rand_sleep()
 
-    print(f"[{now_str()}] 每日任务完成")
-    if next_main_time is not None:
-        print(f"[{now_full_str()}] 每日任务执行完毕，下一轮主任务时间：{next_main_time.strftime('%H:%M')}")
-    else:
-        print(f"[{now_full_str()}] 每日任务执行完毕")
+    log("每日", "每日任务完成")
+
+    if next_main_time:
+        log("每日", f"每日任务执行完毕，下一轮主任务时间：{next_main_time.strftime('%H:%M')}")
+
     print("=" * 50)
 
 # ---------------- 通用领地任务 ----------------
@@ -291,11 +290,7 @@ def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y,
     get_item = materials[get_choice]
     prod_item = materials[prod_choice]
 
-    print(
-        f"[{now_str()}] 开始{task_name}任务，"
-        f"领取材料：{get_item['name']}，"
-        f"生产材料：{prod_item['name']}"
-    )
+    log("领地", f"开始{task_name}任务，领取材料：{get_item['name']}，生产材料：{prod_item['name']}")
 
     click(1500, 280, "关闭深渊")
     rand_sleep()
@@ -322,38 +317,30 @@ def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y,
 
     time.sleep(3)
 
+    # 滚动修正逻辑
     if get_item["get_scroll"] > 0 and prod_item["prod_scroll"] == 0:
         scroll_up(get_item["get_scroll"], f"{task_name}领取完成后恢复到基础材料位置")
 
     elif prod_item["prod_scroll"] > get_item["get_scroll"]:
-        scroll_down(
-            prod_item["prod_scroll"] - get_item["get_scroll"],
-            f"{task_name}生产材料前继续向下调整位置"
-        )
+        extra_scroll = prod_item["prod_scroll"] - get_item["get_scroll"]
+        scroll_down(extra_scroll, f"{task_name}生产材料前继续向下调整位置")
 
     elif 0 < prod_item["prod_scroll"] < get_item["get_scroll"]:
-        scroll_up(
-            get_item["get_scroll"] - prod_item["prod_scroll"],
-            f"{task_name}生产材料前回调位置"
-        )
+        scroll_up(get_item["get_scroll"] - prod_item["prod_scroll"], f"{task_name}生产材料前回调位置")
 
-    # ====== 开始生产 ======
     click(prod_item["x"], prod_item["y"], "开始生产")
     rand_sleep()
 
-    # ====== 关键修改点 ======
     click(1506, 299, "关闭")
     rand_sleep()
 
-    # ⭐ 插入自定义逻辑（只对深渊前哨生效）
+    # ⭐ 深渊前哨专用钩子
     if after_close_hook:
         after_close_hook()
 
-    # ====== 回主流程 ======
     back_to_main_flow()
 
-    print(f"[{now_str()}] {task_name}任务完成")
-
+    log("领地", f"{task_name}任务完成")
 def factory_task(get_choice, prod_choice):
     run_lingdi_task(
         task_name="工厂",
@@ -499,23 +486,26 @@ if __name__ == "__main__":
         now = datetime.now()
         task_executed = False
 
-        # 到时间的夜间任务优先执行
+        # 领地任务优先
         for task in task_configs:
             if (not task["done"]) and now >= task["run_time"]:
-                print(f"[{now_str()}] ===== 执行{task['name']}任务 =====")
-                task["func"](task["get_choice"], task["prod_choice"])
-                print(f"[{now_str()}] ===== {task['name']}任务完成 =====")
+                log("调度", f"===== 执行{task['name']}任务 =====")
 
-                # 夜间任务完成后，立即补一次主任务
+                task["func"](task["get_choice"], task["prod_choice"])
+
+                log("调度", f"===== {task['name']}任务完成 =====")
+
+                # ⭐ 补主任务（关键）
                 main_task_once()
                 next_main_time = calc_next_main_time()
                 task["done"] = True
+
                 print_next_main_time(next_main_time, task_configs)
 
-                # ⭐ 所有领地任务完成 → 立即执行每日任务
+                # 所有领地完成 → 执行每日
                 if all_night_tasks_done(task_configs):
                     if last_daily_run_date != datetime.now().date():
-                        print(f"[{now_str()}] 所有领地任务已完成，立即执行每日任务")
+                        log("调度", "所有领地任务已完成，立即执行每日任务")
                         daily_task_once(next_main_time)
 
                 task_executed = True
@@ -524,22 +514,21 @@ if __name__ == "__main__":
         if task_executed:
             continue
 
-        # 正常主任务
+        # 主任务循环
         if now >= next_main_time:
             main_task_once()
             next_main_time = calc_next_main_time()
+
             print_next_main_time(next_main_time, task_configs)
 
-            # ⭐统一每日任务触发逻辑（推荐）
+            # 每日任务触发
             if last_daily_run_date != datetime.now().date():
 
-                # 有领地任务 → 必须全部完成
                 if task_configs:
                     if not all_night_tasks_done(task_configs):
                         continue
 
-                # 无领地任务 或 已全部完成 → 执行每日任务
-                print(f"[{now_str()}] 主任务后触发每日任务")
+                log("调度", "主任务后触发每日任务")
                 daily_task_once(next_main_time)
 
             continue
