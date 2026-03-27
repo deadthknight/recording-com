@@ -56,6 +56,7 @@ PET_MATERIALS = {
 # ---------------- 全局变量 ----------------
 last_daily_run_date = None
 main_run_count = 0
+territory_initialized = False
 
 # ---------------- 工具函数 ----------------
 def now_str():
@@ -175,6 +176,12 @@ def main_task_once():
 
 # ---------------- 初始化领地 ----------------
 def init_territory():
+    global territory_initialized
+
+    # ✅ 已执行过，直接跳过（关键）
+    if territory_initialized:
+        return
+
     print(f"[{now_str()}] 开始执行初始化领地")
 
     click(1500, 280, "关闭深渊")
@@ -198,6 +205,9 @@ def init_territory():
     back_to_main_flow()
 
     print(f"[{now_str()}] 初始化领地执行完毕")
+
+    # ✅ 标记为已执行（关键）
+    territory_initialized = True
 
 # ---------------- 每日任务 ----------------
 def daily_task_once(next_main_time=None):
@@ -224,21 +234,25 @@ def daily_task_once(next_main_time=None):
     rand_sleep()
     click(1215, 1089, "资源商店")
     rand_sleep()
-
     for i in range(5):
-        if i == 0:
-            before = pyautogui.pixel(GEM_X, GEM_Y)
-            pyautogui.click(GEM_X, GEM_Y)
-            time.sleep(2)
-            after = pyautogui.pixel(GEM_X, GEM_Y)
-            if before == after:
-                print(f"[{now_str()}] 今日宝石碎片已领完，跳过每日任务循环")
-                break
+        before = pyautogui.pixel(GEM_X, GEM_Y)
 
-        click(GEM_X, GEM_Y, f"宝石碎片第{i+1}次")
-        time.sleep(33)
+        click(GEM_X, GEM_Y, f"宝石碎片第{i + 1}次（检测+点击）")
+        time.sleep(2)
+
+        after = pyautogui.pixel(GEM_X, GEM_Y)
+
+        # ✅ 每一轮都判断
+        if before == after:
+            print(f"[{now_str()}] 宝石碎片已无法继续领取，结束循环（第{i + 1}次）")
+            break
+
+        # ✅ 正常领取流程
+        time.sleep(31)  # 补齐到33秒
+
         click(AD_CLOSE_X, AD_CLOSE_Y, "关闭广告")
-        print(f"[{start_time}] 执行第{i+1}次宝石碎片领取")
+
+        print(f"[{now_str()}] 执行第{i + 1}次宝石碎片领取")
 
         if i < 4:
             print(f"[{now_str()}] 等待10分钟后继续下一次...")
@@ -297,7 +311,7 @@ def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y, g
     for i in range(2):
         click(get_item["x"], get_item["y"], f"领取材料 第{i+1}次")
         rand_sleep()
-
+    time.sleep(3)
     # 领取后是否需要滚回去：
     # 只有当领取项滚动过，并且生产选择是1-5（即 prod_scroll == 0）时，才滚回去
     if get_item["get_scroll"] > 0 and prod_item["prod_scroll"] == 0:
@@ -411,6 +425,7 @@ def configure_tasks():
         return task_list
 
 # ---------------- 主程序 ----------------
+# ---------------- 主程序 ----------------
 if __name__ == "__main__":
     print(f"[{now_str()}] 开始配置今晚任务...")
     task_configs = configure_tasks()
@@ -418,7 +433,7 @@ if __name__ == "__main__":
     print(f"[{now_str()}] 脚本启动...")
 
     if not task_configs:
-        print(f"[{now_str()}] 今晚未启用任何领地任务，0点后主任务完成将执行每日任务")
+        print(f"[{now_str()}] 今晚未启用领地任务，主任务后将立即执行每日任务")
     else:
         for task in task_configs:
             print(f"[{now_str()}] {task['name']}任务将在 {task['run_time'].strftime('%H:%M')} 执行")
@@ -429,12 +444,21 @@ if __name__ == "__main__":
     next_main_time = calc_next_main_time()
     print_next_main_time(next_main_time, task_configs)
 
-    # 启动后执行一次初始化领地
-    print(f"[{now_str()}] 现在开始初始化领地")
-    print_next_main_time(next_main_time, task_configs)
-    init_territory()
-    print(f"[{now_str()}] 初始化领地完成")
-    print_next_main_time(next_main_time, task_configs)
+    # ⭐ 新增：无领地任务 → 立即执行每日任务
+    if not task_configs:
+        if last_daily_run_date != datetime.now().date():
+            print(f"[{now_str()}] 无领地任务，主任务完成后立即执行每日任务")
+            daily_task_once(next_main_time)
+
+    # 启动后执行初始化领地（只有有领地任务才执行）
+    if task_configs:
+        print(f"[{now_str()}] 现在开始初始化领地")
+        print_next_main_time(next_main_time, task_configs)
+        init_territory()
+        print(f"[{now_str()}] 初始化领地完成")
+        print_next_main_time(next_main_time, task_configs)
+    else:
+        print(f"[{now_str()}] 未配置领地任务，跳过初始化领地")
 
     while True:
         now = datetime.now()
@@ -453,6 +477,12 @@ if __name__ == "__main__":
                 task["done"] = True
                 print_next_main_time(next_main_time, task_configs)
 
+                # ⭐ 所有领地任务完成 → 立即执行每日任务
+                if all_night_tasks_done(task_configs):
+                    if last_daily_run_date != datetime.now().date():
+                        print(f"[{now_str()}] 所有领地任务已完成，立即执行每日任务")
+                        daily_task_once(next_main_time)
+
                 task_executed = True
                 break
 
@@ -465,16 +495,17 @@ if __name__ == "__main__":
             next_main_time = calc_next_main_time()
             print_next_main_time(next_main_time, task_configs)
 
-            # 每日任务优先级最低
+            # ⭐统一每日任务触发逻辑（推荐）
             if last_daily_run_date != datetime.now().date():
+
+                # 有领地任务 → 必须全部完成
                 if task_configs:
-                    if all_night_tasks_done(task_configs):
-                        print(f"[{now_str()}] 工厂/祈愿池/宠物训练营已全部结束，当前主任务完成后执行每日任务")
-                        daily_task_once(next_main_time)
-                else:
-                    if TEST_MODE or is_after_midnight():
-                        print(f"[{now_str()}] 今晚未启用领地任务，当前主任务完成后执行每日任务")
-                        daily_task_once(next_main_time)
+                    if not all_night_tasks_done(task_configs):
+                        continue
+
+                # 无领地任务 或 已全部完成 → 执行每日任务
+                print(f"[{now_str()}] 主任务后触发每日任务")
+                daily_task_once(next_main_time)
 
             continue
 
