@@ -52,7 +52,13 @@ PET_MATERIALS = {
     8: {"name": "远古能源", "x": 1472, "y": 1000, "get_scroll": 2, "prod_scroll": 2},
     9: {"name": "磁带", "x": 1472, "y": 1100, "get_scroll": 2, "prod_scroll": 2},
 }
-
+ABYSS_OUTPOST_MATERIALS = {
+    1: {"name": "洗炼药水", "x": 1476, "y": 700, "get_scroll": 2, "prod_scroll": 2},
+    2: {"name": "灯笼", "x": 1476, "y": 800, "get_scroll": 2, "prod_scroll": 2},
+    3: {"name": "远古能源", "x": 1476, "y": 900, "get_scroll": 2, "prod_scroll": 2},
+    4: {"name": "散落的祷文", "x": 1476, "y": 1000, "get_scroll": 2, "prod_scroll": 2},
+    5: {"name": "透明结晶", "x": 1476, "y": 1100, "get_scroll": 2, "prod_scroll": 2},
+}
 # ---------------- 全局变量 ----------------
 last_daily_run_date = None
 main_run_count = 0
@@ -199,7 +205,7 @@ def init_territory():
         time.sleep(0.3)
 
     rand_sleep()
-    click(1549, 790, "进入生产工厂")
+    click(1549, 790, "点击初始位置")
     rand_sleep()
 
     back_to_main_flow()
@@ -279,7 +285,9 @@ def daily_task_once(next_main_time=None):
     print("=" * 50)
 
 # ---------------- 通用领地任务 ----------------
-def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y, get_choice, prod_choice, materials):
+def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y,
+                    get_choice, prod_choice, materials, after_close_hook=None):
+
     get_item = materials[get_choice]
     prod_item = materials[prod_choice]
 
@@ -311,28 +319,37 @@ def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y, g
     for i in range(2):
         click(get_item["x"], get_item["y"], f"领取材料 第{i+1}次")
         rand_sleep()
+
     time.sleep(3)
-    # 领取后是否需要滚回去：
-    # 只有当领取项滚动过，并且生产选择是1-5（即 prod_scroll == 0）时，才滚回去
+
     if get_item["get_scroll"] > 0 and prod_item["prod_scroll"] == 0:
         scroll_up(get_item["get_scroll"], f"{task_name}领取完成后恢复到基础材料位置")
 
-    # 如果生产本身需要滚动，则直接继续向下滚动
     elif prod_item["prod_scroll"] > get_item["get_scroll"]:
-        extra_scroll = prod_item["prod_scroll"] - get_item["get_scroll"]
-        scroll_down(extra_scroll, f"{task_name}生产材料前继续向下调整位置")
+        scroll_down(
+            prod_item["prod_scroll"] - get_item["get_scroll"],
+            f"{task_name}生产材料前继续向下调整位置"
+        )
 
-    # 如果生产滚动次数比领取少，理论上会出现位置偏下
-    # 这类情况先回退到目标位置
     elif 0 < prod_item["prod_scroll"] < get_item["get_scroll"]:
-        scroll_up(get_item["get_scroll"] - prod_item["prod_scroll"], f"{task_name}生产材料前回调位置")
+        scroll_up(
+            get_item["get_scroll"] - prod_item["prod_scroll"],
+            f"{task_name}生产材料前回调位置"
+        )
 
+    # ====== 开始生产 ======
     click(prod_item["x"], prod_item["y"], "开始生产")
     rand_sleep()
 
+    # ====== 关键修改点 ======
     click(1506, 299, "关闭")
     rand_sleep()
 
+    # ⭐ 插入自定义逻辑（只对深渊前哨生效）
+    if after_close_hook:
+        after_close_hook()
+
+    # ====== 回主流程 ======
     back_to_main_flow()
 
     print(f"[{now_str()}] {task_name}任务完成")
@@ -373,6 +390,22 @@ def pet_training_task(get_choice, prod_choice):
         materials=PET_MATERIALS
     )
 
+def abyss_outpost_task(get_choice, prod_choice):
+    run_lingdi_task(
+        task_name="深渊前哨",
+        enter_x=1011,
+        enter_y=844,
+        produce_btn_x=1331,
+        produce_btn_y=776,
+        get_choice=get_choice,
+        prod_choice=prod_choice,
+        materials=ABYSS_OUTPOST_MATERIALS,
+        after_close_hook=lambda: (
+            click(1551, 548, "恢复领地初始位置"),
+            rand_sleep()
+        )
+    )
+
 # ---------------- 任务配置 ----------------
 def build_task_config(task_name, task_func, materials):
     get_choice = input_material_choice(task_name, materials, "领取材料")
@@ -396,6 +429,7 @@ def configure_tasks():
     print("1 - 工厂")
     print("2 - 祈愿池")
     print("3 - 宠物训练营")
+    print("4 - 深渊前哨")
 
     while True:
         raw = input("请输入选择：").strip()
@@ -408,7 +442,7 @@ def configure_tasks():
             print("输入无效，请重新输入。")
             continue
 
-        if not all(x in {1, 2, 3} for x in selected):
+        if not all(x in {1, 2, 3, 4} for x in selected):
             print("输入无效，请重新输入。")
             continue
 
@@ -421,7 +455,8 @@ def configure_tasks():
                 task_list.append(build_task_config("祈愿池", wish_pool_task, WISH_MATERIALS))
             elif x == 3:
                 task_list.append(build_task_config("宠物训练营", pet_training_task, PET_MATERIALS))
-
+            elif x == 4:
+                task_list.append(build_task_config("深渊前哨", abyss_outpost_task, ABYSS_OUTPOST_MATERIALS))
         return task_list
 
 # ---------------- 主程序 ----------------
@@ -437,7 +472,7 @@ if __name__ == "__main__":
     else:
         for task in task_configs:
             print(f"[{now_str()}] {task['name']}任务将在 {task['run_time'].strftime('%H:%M')} 执行")
-        print(f"[{now_str()}] 每日任务优先级最低，将在工厂/祈愿池/宠物训练营全部结束后的主任务完成后执行")
+        print(f"[{now_str()}] 每日任务优先级最低，将在所有领地任务完成后的主任务执行后触发")
 
     # 启动先执行一次主任务
     main_task_once()
