@@ -210,7 +210,7 @@ def init_territory():
     click(1549, 790, "进入生产工厂")
     rand_sleep()
 
-    back_to_main_flow()
+    # back_to_main_flow()
 
     log("系统", "初始化领地执行完毕")
 
@@ -285,21 +285,25 @@ def daily_task_once(next_main_time=None):
 
 # ---------------- 通用领地任务 ----------------
 def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y,
-                    get_choice, prod_choice, materials, after_close_hook=None):
+                    get_choice, prod_choice, materials, after_close_hook=None,
+                    skip_enter=False):   # ⭐新增参数
 
     get_item = materials[get_choice]
     prod_item = materials[prod_choice]
 
     log("领地", f"开始{task_name}任务，领取材料：{get_item['name']}，生产材料：{prod_item['name']}")
 
-    click(1500, 280, "关闭深渊")
-    rand_sleep()
-    click(1055, 1162, "深渊返回")
-    rand_sleep()
-    click(1055, 1162, "返回主页面")
-    rand_sleep()
-    click(1353, 1174, "领地")
-    rand_sleep()
+    if not skip_enter:
+        click(1500, 280, "关闭深渊")
+        rand_sleep()
+        click(1055, 1162, "深渊返回")
+        rand_sleep()
+        click(1055, 1162, "返回主页面")
+        rand_sleep()
+        click(1353, 1174, "领地")
+        rand_sleep()
+    else:
+        log("领地", "首次任务，已在领地内，跳过进入流程")
 
     click(enter_x, enter_y, f"进入{task_name}")
     rand_sleep()
@@ -341,7 +345,7 @@ def run_lingdi_task(task_name, enter_x, enter_y, produce_btn_x, produce_btn_y,
     back_to_main_flow()
 
     log("领地", f"{task_name}任务完成")
-def factory_task(get_choice, prod_choice):
+def factory_task(get_choice, prod_choice, skip_enter=False):
     run_lingdi_task(
         task_name="工厂",
         enter_x=1290,
@@ -350,10 +354,11 @@ def factory_task(get_choice, prod_choice):
         produce_btn_y=767,
         get_choice=get_choice,
         prod_choice=prod_choice,
-        materials=FACTORY_MATERIALS
+        materials=FACTORY_MATERIALS,
+        skip_enter=skip_enter
     )
 
-def wish_pool_task(get_choice, prod_choice):
+def wish_pool_task(get_choice, prod_choice, skip_enter=False):
     run_lingdi_task(
         task_name="祈愿池",
         enter_x=1446,
@@ -362,10 +367,11 @@ def wish_pool_task(get_choice, prod_choice):
         produce_btn_y=699,
         get_choice=get_choice,
         prod_choice=prod_choice,
-        materials=WISH_MATERIALS
+        materials=WISH_MATERIALS,
+        skip_enter=skip_enter
     )
 
-def pet_training_task(get_choice, prod_choice):
+def pet_training_task(get_choice, prod_choice, skip_enter=False):
     run_lingdi_task(
         task_name="宠物训练营",
         enter_x=1126,
@@ -374,10 +380,11 @@ def pet_training_task(get_choice, prod_choice):
         produce_btn_y=847,
         get_choice=get_choice,
         prod_choice=prod_choice,
-        materials=PET_MATERIALS
+        materials=PET_MATERIALS,
+        skip_enter=skip_enter
     )
 
-def abyss_outpost_task(get_choice, prod_choice):
+def abyss_outpost_task(get_choice, prod_choice, skip_enter=False):
     run_lingdi_task(
         task_name="深渊前哨",
         enter_x=1011,
@@ -390,7 +397,8 @@ def abyss_outpost_task(get_choice, prod_choice):
         after_close_hook=lambda: (
             click(1551, 548, "恢复领地初始位置"),
             rand_sleep()
-        )
+        ),
+        skip_enter=skip_enter
     )
 
 # ---------------- 任务配置 ----------------
@@ -472,15 +480,15 @@ if __name__ == "__main__":
             print(f"[{now_str()}] 无领地任务，主任务完成后立即执行每日任务")
             daily_task_once(next_main_time)
 
-    # 启动后执行初始化领地（只有有领地任务才执行）
-    if task_configs:
-        print(f"[{now_str()}] 现在开始初始化领地")
-        print_next_main_time(next_main_time, task_configs)
-        init_territory()
-        print(f"[{now_str()}] 初始化领地完成")
-        print_next_main_time(next_main_time, task_configs)
-    else:
-        print(f"[{now_str()}] 未配置领地任务，跳过初始化领地")
+    # # 启动后执行初始化领地（只有有领地任务才执行）
+    # if task_configs:
+    #     print(f"[{now_str()}] 现在开始初始化领地")
+    #     print_next_main_time(next_main_time, task_configs)
+    #     init_territory()
+    #     print(f"[{now_str()}] 初始化领地完成")
+    #     print_next_main_time(next_main_time, task_configs)
+    # else:
+    #     print(f"[{now_str()}] 未配置领地任务，跳过初始化领地")
 
     while True:
         now = datetime.now()
@@ -489,11 +497,19 @@ if __name__ == "__main__":
         # 领地任务优先
         for task in task_configs:
             if (not task["done"]) and now >= task["run_time"]:
+
+                # ⭐ 懒初始化（只执行一次）
+                first_run = False
+
+                if not territory_initialized:
+                    log("系统", "首次执行领地任务，开始初始化领地")
+                    init_territory()
+                    log("系统", "初始化领地完成")
+                    first_run = True
+
                 log("调度", f"===== 执行{task['name']}任务 =====")
 
-                task["func"](task["get_choice"], task["prod_choice"])
-
-                log("调度", f"===== {task['name']}任务完成 =====")
+                task["func"](task["get_choice"], task["prod_choice"], first_run)
 
                 # ⭐ 补主任务（关键）
                 main_task_once()
