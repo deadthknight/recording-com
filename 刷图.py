@@ -98,12 +98,10 @@ def detect():
 
             empty_count = 0
 
-            exit_count += 1
-            log(f"回主界面次数：{exit_count}/2")
+            # ⭐新增：体力验证
+            check_stamina_and_exit()
 
-            if exit_count >= 2:
-                log("连续2次回主界面 → 程序退出")
-                raise SystemExit
+
 
             return
 
@@ -122,7 +120,7 @@ def detect():
         return
 
     # ================= t 逻辑 =================
-    if upgrade_text == "t":
+    if upgrade_text.startswith("t"):
         log("识别 t → 连按 1 2 3")
 
         for k in random.sample(["1", "2", "3"], 3):
@@ -166,7 +164,37 @@ def battle_loop():
 
         time.sleep(random.randint(5, 10))
 
+def check_stamina_and_exit():
+    global empty_count
 
+    log("开始体力验证：按空格尝试进入")
+
+    # 1️⃣ 尝试进入关卡
+    press_space()
+    time.sleep(3)
+
+    # 2️⃣ 连续检测3次
+    empty_count = 0
+
+    for i in range(3):
+        upgrade_text = ocr_text(UPGRADE_REGION, 2)
+        extra_text = ocr_text(EXTRA_REGION, 3)
+
+        log(f"[体力检测{i+1}] {upgrade_text} | {extra_text}")
+
+        is_empty = (upgrade_text.strip() == "" and extra_text.strip() == "")
+
+        if is_empty:
+            empty_count += 1
+        else:
+            log("体力恢复/可进入关卡 → 继续运行")
+            return False
+
+        time.sleep(1)
+
+    # 3️⃣ 连续3次空 → 体力不足
+    log("连续3次OCR为空 → 体力不足，退出程序")
+    raise SystemExit
 # ================= 主流程 =================
 def main():
     log("启动")
