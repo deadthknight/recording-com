@@ -1,116 +1,185 @@
 import pyautogui
+import pydirectinput as input
 import time
 import os
+import random
 from datetime import datetime
 import ddddocr
-import re
 
-# ================== 初始化 ==================
+# ================= OCR =================
 ocr = ddddocr.DdddOcr(show_ad=False)
 
-LEFT = 1260
-TOP = 953
-RIGHT = 1312
-BOTTOM = 970
 
-SAVE_DIR = "ocr_test_imgs"
-os.makedirs(SAVE_DIR, exist_ok=True)
+UPGRADE_REGION = (1176, 405, 113, 38)
+EXTRA_REGION = (1500, 388, 22, 22)
 
-saved_files = []
+IMG_DIR = r"D:\PycharmProjects\recording-com\ocr_debug"
 
-# 连续识别不到次数
-fail_count = 0
+# ================= 状态 =================
+is_speed_mode = False
+empty_count = 0
+exit_lock_until = 0
+speed_lock = False
+speed_triggered = False
+exit_count = 0
 
-# ================== 工具函数 ==================
-def now_str():
-    return datetime.now().strftime('%H:%M:%S')
 
-def log(tag, msg):
-    print(f"[{tag}][{now_str()}] {msg}")
+# ================= 工具 =================
+def log(msg):
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-def fix_ocr_digit(text):
-    """纠正常见OCR误识别字符"""
-    mapping = {
-        'V': '1',
-        'I': '1',
-        'l': '1',
-        '|': '1',
-        'O': '0',
-        'o': '0',
-        'S': '5',
-        's': '5'
-    }
-    return ''.join(mapping.get(c, c) for c in text)
 
-def parse_energy(ocr_text):
-    """解析OCR结果成 current/max"""
-    ocr_text = fix_ocr_digit(ocr_text)
-    ocr_text = re.sub(r'[^0-9/]', '', ocr_text)  # 保留数字和 /
-    if '/' not in ocr_text:
-        return None, None
-    parts = ocr_text.split('/')
-    if len(parts) != 2:
-        return None, None
-    try:
-        current = int(parts[0])
-        maximum = int(parts[1])
-        return current, maximum
-    except:
-        return None, None
+def save_img(img, prefix):
+    # ⭐ 只保留 energy 调试图
+    if prefix != "energy":
+        return
 
-def screenshot_and_ocr():
-    global saved_files
-    start_time = time.time()
+    os.makedirs(IMG_DIR, exist_ok=True)
+    img.save(os.path.join(IMG_DIR, f"{prefix}_{datetime.now().strftime('%H%M%S')}.png"))
 
-    img = pyautogui.screenshot(region=(LEFT, TOP, RIGHT - LEFT, BOTTOM - TOP))
-    img = img.resize((img.width * 2, img.height * 2))
-    img = img.convert('L')
 
-    text = ocr.classification(img)
+# ================= OCR =================
+def ocr_text(region, scale=2):
+    img = pyautogui.screenshot(region=region)
+    img = img.resize((img.width * scale, img.height * scale)).convert("L")
+    return ocr.classification(img).strip()
 
-    # 保存截图
-    filename = f"{SAVE_DIR}/{datetime.now().strftime('%H%M%S')}.png"
-    img.save(filename)
-    saved_files.append(filename)
-    log("截图", f"保存：{filename}")
 
-    # 只保留最近2张
-    if len(saved_files) > 2:
-        old_file = saved_files.pop(0)
-        if os.path.exists(old_file):
-            os.remove(old_file)
-            log("清理", f"删除旧截图：{old_file}")
+# ================= 输入 =================
+def press_space():
+    input.keyDown("space")
+    time.sleep(0.1)
+    input.keyUp("space")
 
-    cost = round(time.time() - start_time, 2)
-    return text, cost
 
-# ================== 主循环 ==================
-log("系统", "开始OCR截图测试（3分钟一次）")
+def click(x, y):
+    input.click(x, y)
 
-while True:
-    text, cost = screenshot_and_ocr()
-    current, maximum = parse_energy(text)
 
-    if current is None or maximum is None:
-        fail_count += 1
-        log("识别", f"OCR结果异常：{text} | 连续失败次数：{fail_count}")
+# ================= 核心检测 =================
+def detect():
+    global empty_count, exit_lock_until,exit_count
+
+    now = time.time()
+
+    upgrade_text = ocr_text(UPGRADE_REGION, 2)
+    extra_text = ocr_text(EXTRA_REGION, 3)
+
+    log(f"升级OCR: {repr(upgrade_text)}")
+    log(f"额外OCR: {repr(extra_text)}")
+
+    # ================= 1. 已加速状态（最优先）=================
+    if extra_text == "2":
+        empty_count = 0  # 成功后清空计数
+        exit_count = 0
+        # 已经加速成功 → 不做任何操作
+        return
+
+    # ================= 2. 空状态逻辑（未加速才会进）=================
+    is_empty = (upgrade_text == "" and extra_text == "")
+
+    if is_empty:
+
+        empty_count += 1
+        log(f"空状态：{empty_count}/3")
+
+        if empty_count <= 2:
+            click(1517, 408)
+            log("空状态 → 点击加速")
+            return
+
+        if empty_count >= 3 and now > exit_lock_until:
+            exit_lock_until = now + 5
+
+            log("连续3次空 → 回主界面")
+
+            press_space()
+            time.sleep(5)
+
+            empty_count = 0
+
+            exit_count += 1
+            log(f"回主界面次数：{exit_count}/2")
+
+            if exit_count >= 2:
+                log("连续2次回主界面 → 程序退出")
+                raise SystemExit
+
+            return
+
+        return
+
     else:
-        fail_count = 0
-        log("识别", f"OCR结果：{current}/{maximum}")
-        # 判断体力是否够 5
-        if current < 5:
-            log("系统", f"体力不足（{current}/{maximum}），程序终止")
-            break
-        else:
-            log("系统", f"体力足够（{current}/{maximum}），进入刷材料流程")
-            # ⭐ 这里可以调用刷材料函数，例如：
-            # run_materials_cycle()
+        empty_count = 0
 
-    log("性能", f"本次OCR耗时：{cost} 秒")
+    # ================= 3. 战斗逻辑 =================
+    if "角色升级" in upgrade_text:
+        key = random.choice(["1", "2", "3"])
+        input.keyDown(key)
+        time.sleep(0.08)
+        input.keyUp(key)
+        log(f"角色升级 → 按 {key}")
+        return
 
-    if fail_count >= 2:
-        log("系统", "连续两次识别不到，判断在关卡中，暂停进入新关卡")
-        fail_count = 0  # 重置计数
-    else:
-        log("系统", "等待3分钟后进行下一次识别...\n")
-        time.sleep(180)  # 3分钟
+    # ================= t 逻辑 =================
+    if upgrade_text == "t":
+        log("识别 t → 连按 1 2 3")
+
+        for k in random.sample(["1", "2", "3"], 3):
+            input.keyDown(k)
+            time.sleep(0.08)
+            input.keyUp(k)
+            time.sleep(0.1)
+
+        time.sleep(0.1)
+        press_space()
+        log("t逻辑结束 → 补空格")
+
+        return
+
+    # ================= 默认战斗 =================
+    press_space()
+    log("默认战斗 → space")
+
+
+# ================= 进入关卡 =================
+def enter_level():
+    pyautogui.click(1379, 802)
+    time.sleep(0.5)
+
+    press_space()
+    log("进入关卡")
+
+    time.sleep(3)
+    press_space()
+
+    return True
+
+
+# ================= 战斗循环 =================
+def battle_loop():
+    log("战斗循环启动")
+
+    while True:
+
+        detect()
+
+        time.sleep(random.randint(5, 10))
+
+
+# ================= 主流程 =================
+def main():
+    log("启动")
+
+    pyautogui.click(1112, 200)
+    log("切换到游戏窗口")
+    time.sleep(3)
+
+    while True:
+        enter_level()
+        battle_loop()
+
+
+if __name__ == "__main__":
+    time.sleep(5)
+    main()
