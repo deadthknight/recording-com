@@ -1,7 +1,6 @@
 import pyautogui
 import pydirectinput as input
 import time
-import os
 import random
 from datetime import datetime
 import ddddocr
@@ -9,40 +8,42 @@ import ddddocr
 # ================= OCR =================
 ocr = ddddocr.DdddOcr(show_ad=False)
 
-
+VICTORY_REGION = (1205, 346, 145, 72)
 UPGRADE_REGION = (1176, 405, 113, 38)
 EXTRA_REGION = (1500, 388, 22, 22)
 
-IMG_DIR = r"D:\PycharmProjects\recording-com\ocr_debug"
 
 # ================= 状态 =================
-is_speed_mode = False
-empty_count = 0
-exit_lock_until = 0
-speed_lock = False
-speed_triggered = False
-exit_count = 0
-
-
+last_victory_time = 0
+speed_active = False       # 是否已经加速
+empty_exit_count = 0
+run_count = 0    # 空状态计数（用于退出）
+run_start_time = 0
+run_durations = []
 # ================= 工具 =================
 def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
+def click_pos(x, y, desc=""):
+    input.click(x, y)
+    if desc:
+        log(desc)
 
-def save_img(img, prefix):
-    # ⭐ 只保留 energy 调试图
-    if prefix != "energy":
-        return
 
-    os.makedirs(IMG_DIR, exist_ok=True)
-    img.save(os.path.join(IMG_DIR, f"{prefix}_{datetime.now().strftime('%H%M%S')}.png"))
-
+def rand_sleep(a=1, b=2):
+    time.sleep(random.uniform(a, b))
 
 # ================= OCR =================
 def ocr_text(region, scale=2):
     img = pyautogui.screenshot(region=region)
     img = img.resize((img.width * scale, img.height * scale)).convert("L")
     return ocr.classification(img).strip()
+
+
+def check_victory():
+    text = ocr_text(VICTORY_REGION, 2)
+    # log(f"胜利OCR: {repr(text)}")
+    return "胜利" in text and len(text) >= 2
 
 
 # ================= 输入 =================
@@ -58,70 +59,61 @@ def click(x, y):
 
 # ================= 核心检测 =================
 def detect():
-    global empty_count, exit_lock_until,exit_count
+    global last_victory_time,run_start_time
+    global speed_active, empty_exit_count
 
     now = time.time()
 
-    upgrade_text = ocr_text(UPGRADE_REGION, 2)
-    extra_text = ocr_text(EXTRA_REGION, 3)
+    # ================= 1. 胜利 =================
+    if now - last_victory_time > 10:
+        if check_victory():
+            global run_count, run_start_time, run_durations
 
-    log(f"升级OCR: {repr(upgrade_text)}")
-    log(f"额外OCR: {repr(extra_text)}")
+            last_victory_time = now
+            run_count += 1
 
-    # ================= 1. 已加速状态（最优先）=================
-    if extra_text == "2":
-        empty_count = 0  # 成功后清空计数
-        exit_count = 0
-        # 已经加速成功 → 不做任何操作
-        return
+            if run_start_time > 0:
+                duration = int(now - run_start_time)
+                run_durations.append(duration)
+            else:
+                duration = 0
 
-    # ================= 2. 空状态逻辑（未加速才会进）=================
-    is_empty = (upgrade_text == "" and extra_text == "")
-
-    if is_empty:
-
-        empty_count += 1
-        log(f"空状态：{empty_count}/3")
-
-        if empty_count <= 2:
-            click(1517, 408)
-            log("空状态 → 点击加速")
-            return
-
-        if empty_count >= 3 and now > exit_lock_until:
-            exit_lock_until = now + 5
-
-            log("连续3次空 → 回主界面")
+            m, s = divmod(duration, 60)
+            log(f"检测到胜利 → 已刷 {run_count} 次 | 本局耗时 {m}分{s}秒")
 
             press_space()
             time.sleep(5)
 
-            empty_count = 0
+            press_space()
+            log("重新进入关卡")
 
-            # ⭐新增：体力验证
-            check_stamina_and_exit()
+            # ⭐ 关键：重新计时
+            run_start_time = time.time()
 
-
-
+            speed_active = False
+            empty_exit_count = 0
             return
 
+    # ================= 2. OCR =================
+    upgrade_text = ocr_text(UPGRADE_REGION, 2)
+    speed_text = ocr_text(EXTRA_REGION, 3)
+
+    # if speed_text == "2":
+    #     log("加速状态: 加速中")
+    # else:
+    #     log(f"加速状态: {repr(speed_text)}")
+
+    # log(f"升级OCR: {repr(upgrade_text)}")
+
+    # ================= 3. 已加速 =================
+    if speed_text == "2":
+        speed_active = True
+        empty_exit_count = 0
         return
 
-    else:
-        empty_count = 0
-
-    # ================= 3. 战斗逻辑 =================
-    if "角色升级" in upgrade_text:
-        key = random.choice(["1", "2", "3"])
-        input.keyDown(key)
-        time.sleep(0.08)
-        input.keyUp(key)
-        log(f"角色升级 → 按 {key}")
-        return
-
-    # ================= t 逻辑 =================
-    if upgrade_text.startswith("t"):
-        log("识别 t → 连按 1 2 3")
+    # ================= 4. t逻辑 =================
+    if upgrade_text and upgrade_text.lower().startswith("t"):
+        # log("识别 t → 连按 1 2 3")
 
         for k in random.sample(["1", "2", "3"], 3):
             input.keyDown(k)
@@ -129,19 +121,69 @@ def detect():
             input.keyUp(k)
             time.sleep(0.1)
 
-        time.sleep(0.1)
+        time.sleep(1)
         press_space()
-        log("t逻辑结束 → 补空格")
+        time.sleep(1)
+        press_space()
 
+        empty_exit_count = 0
         return
 
-    # ================= 默认战斗 =================
+    # ================= 5. 升级 =================
+    if "角色升级" in upgrade_text:
+        key = random.choice(["1", "2", "3"])
+        input.keyDown(key)
+        time.sleep(0.08)
+        input.keyUp(key)
+
+        # log(f"角色升级 → 按 {key}")
+
+        empty_exit_count = 0
+        return
+
+    # ================= 6. 空状态 =================
+    if upgrade_text == "" and speed_text == "":
+        empty_exit_count += 1
+        # log(f"空状态计数(退出用): {empty_exit_count}")
+
+        # ⭐ 在这里补上加速（关键）
+        click(1517, 408)
+        # log("空状态 → 点击加速")
+
+        if empty_exit_count >= 3:
+            log("体力耗尽，关闭程序，恢复深渊主活动")
+
+            # 2️⃣ 点击关闭
+            click_pos(1516, 516, "点击返回主界面")
+            rand_sleep()
+
+            # 3️⃣ 点击活动
+            click_pos(1508, 1020, "点击活动")
+            rand_sleep()
+
+            # 4️⃣ 点击深渊
+            click_pos(1280, 448, "点击深渊")
+            rand_sleep()
+
+            # 5️⃣ 点击仓库（你原逻辑）
+            click_pos(1103, 1065, "点击仓库")
+            rand_sleep()
+
+            log("流程完成 → 程序退出")
+            print_summary()
+            raise SystemExit
+
+        return
+    else:
+        empty_exit_count = 0
+
+    # ================= 7. 兜底 =================
     press_space()
-    log("默认战斗 → space")
-
-
+    # log("兜底 → space")
 # ================= 进入关卡 =================
 def enter_level():
+    global run_start_time
+
     pyautogui.click(1379, 802)
     time.sleep(0.5)
 
@@ -151,50 +193,32 @@ def enter_level():
     time.sleep(3)
     press_space()
 
-    return True
+    # ⭐ 每一局重新计时（关键！）
+    run_start_time = time.time()
 
+# ================= 总结=================
+def print_summary():
+    log("========== 刷图统计 ==========")
+
+    for i, d in enumerate(run_durations, 1):
+        m, s = divmod(d, 60)
+        log(f"第{i}次：{m}分{s}秒")
+
+    if run_durations:
+        total = sum(run_durations)
+        avg = total / len(run_durations)
+        m, s = divmod(int(avg), 60)
+        log(f"平均耗时：{m}分{s}秒")
 
 # ================= 战斗循环 =================
 def battle_loop():
     log("战斗循环启动")
 
     while True:
-
         detect()
-
         time.sleep(random.randint(5, 10))
 
-def check_stamina_and_exit():
-    global empty_count
 
-    log("开始体力验证：按空格尝试进入")
-
-    # 1️⃣ 尝试进入关卡
-    press_space()
-    time.sleep(3)
-
-    # 2️⃣ 连续检测3次
-    empty_count = 0
-
-    for i in range(3):
-        upgrade_text = ocr_text(UPGRADE_REGION, 2)
-        extra_text = ocr_text(EXTRA_REGION, 3)
-
-        log(f"[体力检测{i+1}] {upgrade_text} | {extra_text}")
-
-        is_empty = (upgrade_text.strip() == "" and extra_text.strip() == "")
-
-        if is_empty:
-            empty_count += 1
-        else:
-            log("体力恢复/可进入关卡 → 继续运行")
-            return False
-
-        time.sleep(1)
-
-    # 3️⃣ 连续3次空 → 体力不足
-    log("连续3次OCR为空 → 体力不足，退出程序")
-    raise SystemExit
 # ================= 主流程 =================
 def main():
     log("启动")
@@ -209,5 +233,6 @@ def main():
 
 
 if __name__ == "__main__":
+    print("5s后开始挂机")
     time.sleep(5)
     main()
