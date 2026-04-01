@@ -20,6 +20,7 @@ empty_exit_count = 0
 run_count = 0    # 空状态计数（用于退出）
 run_start_time = 0
 run_durations = []
+victory_buffer = []
 # ================= 工具 =================
 def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
@@ -48,8 +49,6 @@ def check_victory():
     img = pyautogui.screenshot(region=VICTORY_REGION)
     text = ocr_image(img)
 
-    text = text.strip()
-
     log(f"胜利OCR: {repr(text)}")
 
     # 放进缓冲区
@@ -61,18 +60,13 @@ def check_victory():
 
     # ================= 判断 =================
 
-    # ✔ 1. 直接识别到“胜利”
+    # ✔ 1. 正常识别到“胜利”
     if any("胜利" in t for t in victory_buffer):
-        log("判定：胜利（文字匹配）")
-        victory_buffer.clear()
         return True
 
-    # ✔ 2. 连续3次稳定 T（防误判优化）
-    if len(victory_buffer) == 3:
-        if all(t == "T" for t in victory_buffer):
-            log("判定：胜利（T稳定态）")
-            victory_buffer.clear()
-            return True
+    # ✔ 2. 连续3次都是“T”
+    if len(victory_buffer) == 3 and all(t == "T" for t in victory_buffer):
+        return True
 
     return False
 
