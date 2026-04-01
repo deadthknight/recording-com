@@ -32,19 +32,49 @@ def click_pos(x, y, desc=""):
 
 def rand_sleep(a=1, b=2):
     time.sleep(random.uniform(a, b))
-
-# ================= OCR =================
-def ocr_text(region, scale=2):
-    img = pyautogui.screenshot(region=region)
-    img = img.resize((img.width * scale, img.height * scale)).convert("L")
+#=====================图像识别=====================
+def ocr_image(img):
     return ocr.classification(img).strip()
 
 
-def check_victory():
-    text = ocr_text(VICTORY_REGION, 2)
-    # log(f"胜利OCR: {repr(text)}")
-    return "胜利" in text and len(text) >= 2
+def ocr_text(region):
+    img = pyautogui.screenshot(region=region)
+    return ocr_image(img)
 
+
+def check_victory():
+    global victory_buffer
+
+    img = pyautogui.screenshot(region=VICTORY_REGION)
+    text = ocr_image(img)
+
+    text = text.strip()
+
+    log(f"胜利OCR: {repr(text)}")
+
+    # 放进缓冲区
+    victory_buffer.append(text)
+
+    # 只保留最近3次
+    if len(victory_buffer) > 3:
+        victory_buffer.pop(0)
+
+    # ================= 判断 =================
+
+    # ✔ 1. 直接识别到“胜利”
+    if any("胜利" in t for t in victory_buffer):
+        log("判定：胜利（文字匹配）")
+        victory_buffer.clear()
+        return True
+
+    # ✔ 2. 连续3次稳定 T（防误判优化）
+    if len(victory_buffer) == 3:
+        if all(t == "T" for t in victory_buffer):
+            log("判定：胜利（T稳定态）")
+            victory_buffer.clear()
+            return True
+
+    return False
 
 # ================= 输入 =================
 def press_space():
@@ -95,8 +125,8 @@ def detect():
             return
 
     # ================= 2. OCR =================
-    upgrade_text = ocr_text(UPGRADE_REGION, 2)
-    speed_text = ocr_text(EXTRA_REGION, 3)
+    upgrade_text = ocr_text(UPGRADE_REGION)
+    speed_text = ocr_text(EXTRA_REGION)
 
     # if speed_text == "2":
     #     log("加速状态: 加速中")
