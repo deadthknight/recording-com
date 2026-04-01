@@ -46,25 +46,19 @@ def ocr_text(region):
 def check_victory():
     global victory_buffer
 
-    img = pyautogui.screenshot(region=VICTORY_REGION)
-    text = ocr_image(img)
-
+    text = ocr_text(VICTORY_REGION)
     log(f"胜利OCR: {repr(text)}")
 
-    # 放进缓冲区
     victory_buffer.append(text)
 
-    # 只保留最近3次
     if len(victory_buffer) > 3:
         victory_buffer.pop(0)
 
-    # ================= 判断 =================
-
-    # ✔ 1. 正常识别到“胜利”
+    # ✅ 条件B：识别到“胜利” → 直接返回
     if any("胜利" in t for t in victory_buffer):
         return True
 
-    # ✔ 2. 连续3次都是“T”
+    # ✅ 条件A：连续3次 T → 返回
     if len(victory_buffer) == 3 and all(t == "T" for t in victory_buffer):
         return True
 
@@ -92,7 +86,7 @@ def detect():
     if now - last_victory_time > 10:
         if check_victory():
             global run_count, run_start_time, run_durations
-
+            victory_buffer.clear()
             last_victory_time = now
             run_count += 1
 
@@ -206,7 +200,9 @@ def detect():
     # log("兜底 → space")
 # ================= 进入关卡 =================
 def enter_level():
-    global run_start_time
+    global run_start_time, victory_buffer
+
+    victory_buffer.clear()   # ⭐ 必须加
 
     pyautogui.click(1379, 802)
     time.sleep(0.5)
@@ -217,7 +213,6 @@ def enter_level():
     time.sleep(3)
     press_space()
 
-    # ⭐ 每一局重新计时（关键！）
     run_start_time = time.time()
 
 # ================= 总结=================
