@@ -6,11 +6,11 @@
 # while True:
 #     print(pyautogui.position())
 #     time.sleep(1)
-
+#
 # import pyautogui
 #
 # print(pyautogui.pixel(1462, 870))
-
+#
 # if __name__ == "__main__":
 #     pass
 
@@ -24,9 +24,10 @@ ocr = ddddocr.DdddOcr(show_ad=False)
 
 # ✅ 新区域
 TEST_REGION =(1205, 346, 145, 72)
-
+Begin_region=(1213, 987, 137, 40)
+ICON_1_REGION = (1222, 514, 130, 44)
 def test_ocr():
-    img = pyautogui.screenshot(region=TEST_REGION)
+    img = pyautogui.screenshot(region=ICON_1_REGION)
 
     # 保存截图（必须保留）
     ts = datetime.now().strftime("%H%M%S_%f")
