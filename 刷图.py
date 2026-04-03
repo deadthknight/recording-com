@@ -80,8 +80,6 @@ def click(x, y):
 
 
 # ================= 核心检测 =================
-# ================= 核心检测 =================
-# ================= 核心检测 =================
 def detect():
     global last_victory_time, run_start_time
     global speed_active, empty_exit_count
@@ -185,8 +183,11 @@ def detect():
         input.keyUp(key)
         empty_exit_count = 0
         return
-
-    # ================= 6. 兜底 =================
+    # ================= 6. 空状态 → 点击加速 =================
+    if upgrade_text == "" and speed_text == "":
+        click(1517, 408)  # <--- 加速点击，已补上
+        return
+    # ================= 7. 兜底 =================
     press_space()
 # ================= 进入关卡 =================
 def enter_level():
